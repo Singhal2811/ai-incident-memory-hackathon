@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VICTORIALOGS_URL=http://victorialogs:9428
+      - CHROMA_PERSIST_DIR=/data/chromadb
+    volumes:
+      - chroma_data:/data/chromadb
+    depends_on:
+      - victorialogs
+    networks:
+      - log-analyzer-net
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+    networks:
+      - log-analyzer-net
+    restart: unless-stopped
+
+  # VictoriaLogs for log storage
+  victorialogs:
+    image: victoriametrics/victoria-logs:v0.4.1-victorialogs
+    ports:
+      - "9428:9428"
+    volumes:
+      - victorialogs_data:/victoria-logs-data
+    command:
+      - -storageDataPath=/victoria-logs-data
+      - -retentionPeriod=30d
+    networks:
+      - log-analyzer-net
+    restart: unless-stopped
+
+volumes:
+  chroma_data:
+  victorialogs_data:
+
+networks:
+  log-analyzer-net:
+    driver: bridge

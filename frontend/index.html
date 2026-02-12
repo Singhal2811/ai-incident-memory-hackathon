@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Analyzer - AI-Powered Incident Investigation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: #15151f;
+            --border-color: #2a2a3a;
+            --border-glow: #3b82f6;
+            --text-primary: #f0f0f5;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-orange: #f59e0b;
+            --accent-cyan: #06b6d4;
+            --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        #root {
+            min-height: 100vh;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .logo {
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gradient-primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text span {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-section {
+            padding: 20px 12px;
+            flex: 1;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0 12px;
+            margin-bottom: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        .header {
+            padding: 20px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title h2 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .api-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .content-area {
+            padding: 32px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea.form-input {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 200px;
+        }
+
+        select.form-input {
+            cursor: pointer;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        /* Severity badges */
+        .severity-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .severity-P1 {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .severity-P2 {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-orange);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .severity-P3 {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .severity-P4 {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        /* Analysis Results */
+        .analysis-section {
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agent-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .agent-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .agent-content {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: var(--bg-primary);
+            padding: 12px;
+            border-radius: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .agent-content pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -24px;
+            width: 14px;
+            height: 14px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            border: 3px solid var(--bg-card);
+        }
+
+        .timeline-content {
+            background: var(--bg-tertiary);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .timeline-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .timeline-event {
+            font-size: 14px;
+        }
+
+        /* Similar Incidents */
+        .similar-incident {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .similar-incident:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+
+        .similar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .similarity-score {
+            font-size: 12px;
+            padding: 4px 8px;
+            background: rgba(139, 92, 246, 0.15);
+            color: var(--accent-purple);
+            border-radius: 4px;
+        }
+
+        /* Recommendations */
+        .recommendation-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .recommendation-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* PIR Document */
+        .pir-document {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+        }
+
+        .pir-document h1 {
+            font-size: 24px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .pir-document h2 {
+            font-size: 18px;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--accent-blue);
+        }
+
+        .pir-document h3 {
+            font-size: 15px;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .pir-document p {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+        }
+
+        .pir-document ul {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .pir-document li {
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        /* Loading States */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 15, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            z-index: 1000;
+        }
+
+        .loading-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .loading-agent {
+            color: var(--accent-blue);
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-tertiary);
+            padding: 4px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Memory Search */
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .search-box .form-input {
+            flex: 1;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Demo Banner */
+        .demo-banner {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .demo-banner-text {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* File Upload */
+        .file-upload {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .file-upload:hover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-upload-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.6;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Configuration Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // API Configuration
+        const API_BASE = 'http://localhost:8000';
+
+        // Icons (using emoji for simplicity)
+        const Icons = {
+            analyze: '🔍',
+            memory: '🧠',
+            settings: '⚙️',
+            dashboard: '📊',
+            logs: '📋',
+            upload: '📤',
+            check: '✓',
+            warning: '⚠️',
+            error: '❌',
+            timeline: '⏱️',
+            recommendation: '💡',
+            pir: '📄',
+            search: '🔎',
+            close: '✕',
+            lightning: '⚡',
+            robot: '🤖'
+        };
+
+        // Configuration Modal Component
+        function ConfigModal({ isOpen, onClose, config, onSave }) {
+            const [localConfig, setLocalConfig] = useState(config);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="modal-overlay" onClick={onClose}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Configuration</h3>
+                            <button className="btn btn-ghost" onClick={onClose}>{Icons.close}</button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label className="form-label">LLM Provider</label>
+                                <select 
+                                    className="form-input"
+                                    value={localConfig.provider}
+                                    onChange={e => setLocalConfig({...localConfig, provider: e.target.value})}
+                                >
+                                    <option value="openai">OpenAI</option>
+                                    <option value="anthropic">Anthropic</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">
+                                    {localConfig.provider === 'openai' ? 'OpenAI API Key' : 'Anthropic API Key'}
+                                </label>
+                                <input 
+                                    type="password"
+                                    className="form-input"
+                                    placeholder="Enter your API key..."
+                                    value={localConfig.apiKey}
+                                    onChange={e => setLocalConfig({...localConfig, apiKey: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Backend URL</label>
+                                <input 
+                                    type="text"
+                                    className="form-input"
+                                    value={localConfig.backendUrl}
+                                    onChange={e => setLocalConfig({...localConfig, backendUrl: e.target.value})}
+                                />
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+                            <button className="btn btn-primary" onClick={() => { onSave(localConfig); onClose(); }}>
+                                Save Configuration
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Sidebar Component
+        function Sidebar({ activeView, setActiveView }) {
+            return (
+                <div className="sidebar">
+                    <div className="logo">
+                        <div className="logo-icon">{Icons.robot}</div>
+                        <div className="logo-text">
+                            <h1>Log Analyzer</h1>
+                            <span>AI-Powered</span>
+                        </div>
+                    </div>
+                    <div className="nav-section">
+                        <div className="nav-label">Investigation</div>
+                        <div 
+                            className={`nav-item ${activeView === 'analyze' ? 'active' : ''}`}
+                            onClick={() => setActiveView('analyze')}
+                        >
+                            <span className="nav-icon">{Icons.analyze}</span>
+                            <span>Analyze Logs</span>
+                        </div>
+                        <div 
+                            className={`nav-item ${activeView === 'upload' ? 'active' : ''}`}
+                            onClick={() => setActiveView('upload')}
+                        >
+                            <span className="nav-icon">{Icons.upload}</span>
+                            <span>Upload Logs</span>
+                        </div>
+                        
+                        <div className="nav-label" style={{marginTop: 24}}>Knowledge Base</div>
+                        <div 
+                            className={`nav-item ${activeView === 'memory' ? 'active' : ''}`}
+                            onClick={() => setActiveView('memory')}
+                        >
+                            <span className="nav-icon">{Icons.memory}</span>
+                            <span>Incident Memory</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Header Component
+        function Header({ title, subtitle, apiStatus, onConfigClick }) {
+            return (
+                <div className="header">
+                    <div className="header-title">
+                        <h2>{title}</h2>
+                        <p>{subtitle}</p>
+                    </div>
+                    <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
+                        <div className="api-status">
+                            <div className={`status-dot ${apiStatus ? '' : 'error'}`}></div>
+                            <span style={{fontSize: 13}}>{apiStatus ? 'API Connected' : 'API Offline'}</span>
+                        </div>
+                        <button className="btn btn-ghost" onClick={onConfigClick}>{Icons.settings}</button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Log Analysis Form Component
+        function LogAnalysisForm({ onSubmit, isLoading, onLoadDemo }) {
+            const [formData, setFormData] = useState({
+                service: '',
+                severity: 'P2',
+                summary: '',
+                logs: '',
+                startTime: '',
+                endTime: ''
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                onSubmit(formData);
+            };
+
+            return (
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">
+                            <div className="card-title-icon">{Icons.analyze}</div>
+                            <span>Incident Details</span>
+                        </div>
+                    </div>
+                    
+                    <div className="demo-banner">
+                        <div className="demo-banner-text">
+                            <span>{Icons.lightning}</span>
+                            <span>Quick start: Load demo logs to see the analyzer in action</span>
+                        </div>
+                        <button className="btn btn-secondary" onClick={onLoadDemo}>Load Demo</button>
+                    </div>
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Service Name *</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="e.g., payment-service"
+                                    value={formData.service}
+                                    onChange={e => setFormData({...formData, service: e.target.value})}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Severity *</label>
+                                <select
+                                    className="form-input"
+                                    value={formData.severity}
+                                    onChange={e => setFormData({...formData, severity: e.target.value})}
+                                >
+                                    <option value="P1">P1 - Critical</option>
+                                    <option value="P2">P2 - High</option>
+                                    <option value="P3">P3 - Medium</option>
+                                    <option value="P4">P4 - Low</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Incident Summary *</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Brief description of the incident..."
+                                value={formData.summary}
+                                onChange={e => setFormData({...formData, summary: e.target.value})}
+                                required
+                            />
+                        </div>
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label className="form-label">Start Time</label>
+                                <input
+                                    type="datetime-local"
+                                    className="form-input"
+                                    value={formData.startTime}
+                                    onChange={e => setFormData({...formData, startTime: e.target.value})}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">End Time</label>
+                                <input
+                                    type="datetime-local"
+                                    className="form-input"
+                                    value={formData.endTime}
+                                    onChange={e => setFormData({...formData, endTime: e.target.value})}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Log Data *</label>
+                            <textarea
+                                className="form-input"
+                                placeholder="Paste your logs here..."
+                                value={formData.logs}
+                                onChange={e => setFormData({...formData, logs: e.target.value})}
+                                style={{minHeight: 250}}
+                                required
+                            />
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            className="btn btn-primary"
+                            disabled={isLoading || !formData.service || !formData.logs}
+                            style={{width: '100%'}}
+                        >
+                            {isLoading ? 'Analyzing...' : 'Analyze Incident'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // Analysis Results Component
+        function AnalysisResults({ result }) {
+            const [activeTab, setActiveTab] = useState('overview');
+
+            if (!result) return null;
+
+            return (
+                <div>
+                    <div className="tabs">
+                        <button 
+                            className={`tab ${activeTab === 'overview' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('overview')}
+                        >
+                            Overview
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'agents' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('agents')}
+                        >
+                            Agent Analysis
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'timeline' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('timeline')}
+                        >
+                            Timeline
+                        </button>
+                        <button 
+                            className={`tab ${activeTab === 'similar' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('similar')}
+                        >
+                            Similar Incidents
+                        </button>
+                        {result.pir && (
+                            <button 
+                                className={`tab ${activeTab === 'pir' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('pir')}
+                            >
+                                PIR Document
+                            </button>
+                        )}
+                    </div>
+
+                    {activeTab === 'overview' && (
+                        <div>
+                            <div className="card">
+                                <div className="card-header">
+                                    <div className="card-title">
+                                        <div className="card-title-icon">{Icons.lightning}</div>
+                                        <span>Incident {result.incident_id}</span>
+                                    </div>
+                                    <span className={`severity-badge severity-${result.escalation.severity}`}>
+                                        {result.escalation.severity}
+                                    </span>
+                                </div>
+                                <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16}}>
+                                    <div>
+                                        <div style={{fontSize: 12, color: 'var(--text-muted)'}}>Service</div>
+                                        <div style={{fontWeight: 500}}>{result.escalation.service}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{fontSize: 12, color: 'var(--text-muted)'}}>Status</div>
+                                        <div style={{fontWeight: 500, color: 'var(--accent-green)'}}>{result.status}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{fontSize: 12, color: 'var(--text-muted)'}}>Created</div>
+                                        <div style={{fontWeight: 500}}>{new Date(result.created_at).toLocaleString()}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="card">
+                                <div className="card-title" style={{marginBottom: 16}}>
+                                    <div className="card-title-icon">{Icons.recommendation}</div>
+                                    <span>Recommendations</span>
+                                </div>
+                                {result.recommendations && result.recommendations.map((rec, i) => (
+                                    <div key={i} className="recommendation-item">
+                                        <div className="recommendation-icon">{i + 1}</div>
+                                        <div>{rec}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'agents' && (
+                        <div>
+                            {result.agents && result.agents.map((agent, i) => (
+                                <div key={i} className="agent-card">
+                                    <div className="agent-header">
+                                        <div className="agent-name">
+                                            <span>{Icons.robot}</span>
+                                            {agent.agent_name}
+                                        </div>
+                                        <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
+                                            <span style={{fontSize: 12, color: 'var(--text-muted)'}}>
+                                                {agent.execution_time.toFixed(2)}s
+                                            </span>
+                                            <span className="agent-status">{agent.status}</span>
+                                        </div>
+                                    </div>
+                                    <div className="agent-content">
+                                        <pre>{JSON.stringify(agent.output, null, 2)}</pre>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {activeTab === 'timeline' && (
+                        <div className="card">
+                            <div className="card-title" style={{marginBottom: 24}}>
+                                <div className="card-title-icon">{Icons.timeline}</div>
+                                <span>Incident Timeline</span>
+                            </div>
+                            {result.timeline && result.timeline.length > 0 ? (
+                                <div className="timeline">
+                                    {result.timeline.map((event, i) => (
+                                        <div key={i} className="timeline-item">
+                                            <div className="timeline-dot"></div>
+                                            <div className="timeline-content">
+                                                <div className="timeline-time">{event.timestamp}</div>
+                                                <div className="timeline-event">{event.event}</div>
+                                                {event.impact && (
+                                                    <div style={{fontSize: 12, color: 'var(--text-muted)', marginTop: 4}}>
+                                                        Impact: {event.impact}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">{Icons.timeline}</div>
+                                    <p>Timeline data not available</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'similar' && (
+                        <div className="card">
+                            <div className="card-title" style={{marginBottom: 24}}>
+                                <div className="card-title-icon">{Icons.memory}</div>
+                                <span>Similar Past Incidents</span>
+                            </div>
+                            {result.similar_incidents && result.similar_incidents.length > 0 ? (
+                                result.similar_incidents.map((incident, i) => (
+                                    <div key={i} className="similar-incident">
+                                        <div className="similar-header">
+                                            <div>
+                                                <div style={{fontWeight: 600}}>{incident.incident_id}</div>
+                                                <div style={{fontSize: 13, color: 'var(--text-secondary)'}}>
+                                                    {incident.service}
+                                                </div>
+                                            </div>
+                                            <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
+                                                <span className={`severity-badge severity-${incident.severity}`}>
+                                                    {incident.severity}
+                                                </span>
+                                                <span className="similarity-score">
+                                                    {Math.round((incident.similarity_score || 0) * 100)}% match
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p style={{fontSize: 13, color: 'var(--text-secondary)'}}>
+                                            {incident.summary}
+                                        </p>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="empty-state">
+                                    <div className="empty-state-icon">{Icons.memory}</div>
+                                    <p>No similar incidents found</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'pir' && result.pir && (
+                        <div className="pir-document">
+                            <div dangerouslySetInnerHTML={{
+                                __html: result.pir
+                                    .replace(/^# /gm, '<h1>')
+                                    .replace(/^## /gm, '<h2>')
+                                    .replace(/^### /gm, '<h3>')
+                                    .replace(/\n/g, '<br/>')
+                            }} />
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // File Upload View
+        function UploadView({ onAnalyze, isLoading }) {
+            const [file, setFile] = useState(null);
+            const [formData, setFormData] = useState({
+                service: '',
+                severity: 'P2',
+                summary: ''
+            });
+
+            const handleFileChange = (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    setFile(e.target.files[0]);
+                }
+            };
+
+            const handleSubmit = async () => {
+                if (!file || !formData.service) return;
+                
+                const text = await file.text();
+                onAnalyze({
+                    ...formData,
+                    logs: text
+                });
+            };
+
+            return (
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">
+                            <div className="card-title-icon">{Icons.upload}</div>
+                            <span>Upload Log File</span>
+                        </div>
+                    </div>
+
+                    <label className="file-upload">
+                        <input type="file" accept=".log,.txt,.json" onChange={handleFileChange} />
+                        <div className="file-upload-icon">{Icons.upload}</div>
+                        <p>{file ? file.name : 'Click to upload or drag and drop'}</p>
+                        <p style={{fontSize: 12, color: 'var(--text-muted)'}}>
+                            Supports .log, .txt, .json files
+                        </p>
+                    </label>
+
+                    {file && (
+                        <div style={{marginTop: 24}}>
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label className="form-label">Service Name *</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="e.g., api-gateway"
+                                        value={formData.service}
+                                        onChange={e => setFormData({...formData, service: e.target.value})}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Severity</label>
+                                    <select
+                                        className="form-input"
+                                        value={formData.severity}
+                                        onChange={e => setFormData({...formData, severity: e.target.value})}
+                                    >
+                                        <option value="P1">P1 - Critical</option>
+                                        <option value="P2">P2 - High</option>
+                                        <option value="P3">P3 - Medium</option>
+                                        <option value="P4">P4 - Low</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Summary</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Brief description..."
+                                    value={formData.summary}
+                                    onChange={e => setFormData({...formData, summary: e.target.value})}
+                                />
+                            </div>
+
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={handleSubmit}
+                                disabled={isLoading || !formData.service}
+                                style={{width: '100%'}}
+                            >
+                                {isLoading ? 'Analyzing...' : 'Analyze File'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Memory Search View
+        function MemoryView({ onSearch, searchResults }) {
+            const [query, setQuery] = useState('');
+            const [isSearching, setIsSearching] = useState(false);
+
+            const handleSearch = async () => {
+                setIsSearching(true);
+                await onSearch(query);
+                setIsSearching(false);
+            };
+
+            return (
+                <div>
+                    <div className="card">
+                        <div className="card-header">
+                            <div className="card-title">
+                                <div className="card-title-icon">{Icons.memory}</div>
+                                <span>Search Incident Memory</span>
+                            </div>
+                        </div>
+                        <div className="search-box">
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Search past incidents... (e.g., 'database connection timeout')"
+                                value={query}
+                                onChange={e => setQuery(e.target.value)}
+                                onKeyPress={e => e.key === 'Enter' && handleSearch()}
+                            />
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={handleSearch}
+                                disabled={isSearching || !query}
+                            >
+                                {isSearching ? 'Searching...' : 'Search'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {searchResults && searchResults.length > 0 && (
+                        <div className="card">
+                            <div className="card-title" style={{marginBottom: 20}}>
+                                Found {searchResults.length} similar incidents
+                            </div>
+                            {searchResults.map((result, i) => (
+                                <div key={i} className="similar-incident">
+                                    <div className="similar-header">
+                                        <div>
+                                            <div style={{fontWeight: 600}}>{result.incident_id}</div>
+                                            <div style={{fontSize: 13, color: 'var(--text-secondary)'}}>
+                                                {result.metadata?.service || 'Unknown service'}
+                                            </div>
+                                        </div>
+                                        <span className="similarity-score">
+                                            {Math.round((result.similarity || 0) * 100)}% match
+                                        </span>
+                                    </div>
+                                    <p style={{fontSize: 13, color: 'var(--text-secondary)', marginTop: 8}}>
+                                        {result.text?.substring(0, 200)}...
+                                    </p>
+                                    {result.metadata?.root_cause && (
+                                        <div style={{marginTop: 8, padding: 8, background: 'var(--bg-primary)', borderRadius: 6}}>
+                                            <div style={{fontSize: 11, color: 'var(--text-muted)', marginBottom: 4}}>Root Cause</div>
+                                            <div style={{fontSize: 13}}>{result.metadata.root_cause}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {searchResults && searchResults.length === 0 && (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">{Icons.search}</div>
+                            <p>No matching incidents found</p>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Loading Overlay
+        function LoadingOverlay({ currentAgent }) {
+            return (
+                <div className="loading-overlay">
+                    <div className="loading-spinner"></div>
+                    <div className="loading-text">Analyzing incident...</div>
+                    {currentAgent && (
+                        <div className="loading-agent">{Icons.robot} {currentAgent}</div>
+                    )}
+                </div>
+            );
+        }
+
+        // Main App Component
+        function App() {
+            const [activeView, setActiveView] = useState('analyze');
+            const [isLoading, setIsLoading] = useState(false);
+            const [currentAgent, setCurrentAgent] = useState(null);
+            const [analysisResult, setAnalysisResult] = useState(null);
+            const [searchResults, setSearchResults] = useState(null);
+            const [apiStatus, setApiStatus] = useState(false);
+            const [showConfig, setShowConfig] = useState(false);
+            const [config, setConfig] = useState({
+                provider: 'openai',
+                apiKey: '',
+                backendUrl: API_BASE
+            });
+
+            // Check API status
+            useEffect(() => {
+                const checkStatus = async () => {
+                    try {
+                        const response = await fetch(`${config.backendUrl}/health`);
+                        setApiStatus(response.ok);
+                    } catch {
+                        setApiStatus(false);
+                    }
+                };
+                checkStatus();
+                const interval = setInterval(checkStatus, 30000);
+                return () => clearInterval(interval);
+            }, [config.backendUrl]);
+
+            const handleAnalyze = async (formData) => {
+                setIsLoading(true);
+                setCurrentAgent('Starting analysis...');
+                
+                try {
+                    const agents = [
+                        'Log Analysis Agent',
+                        'Code Context Agent',
+                        'Timeline Agent',
+                        'Recommendation Agent',
+                        'PIR Generator Agent'
+                    ];
+                    
+                    let agentIndex = 0;
+                    const agentInterval = setInterval(() => {
+                        if (agentIndex < agents.length) {
+                            setCurrentAgent(agents[agentIndex]);
+                            agentIndex++;
+                        }
+                    }, 3000);
+
+                    const response = await fetch(`${config.backendUrl}/api/v1/analyze`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            escalation: {
+                                service: formData.service,
+                                severity: formData.severity,
+                                summary: formData.summary,
+                                start_time: formData.startTime || new Date().toISOString(),
+                                end_time: formData.endTime || null
+                            },
+                            raw_logs: formData.logs,
+                            include_similar: true,
+                            generate_pir: true
+                        })
+                    });
+
+                    clearInterval(agentInterval);
+
+                    if (!response.ok) {
+                        throw new Error('Analysis failed');
+                    }
+
+                    const result = await response.json();
+                    setAnalysisResult(result);
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    alert('Analysis failed. Please check your API configuration and try again.');
+                } finally {
+                    setIsLoading(false);
+                    setCurrentAgent(null);
+                }
+            };
+
+            const handleLoadDemo = async () => {
+                try {
+                    const response = await fetch(`${config.backendUrl}/api/v1/demo-logs`);
+                    const data = await response.json();
+                    // This would need to be wired up to the form
+                    handleAnalyze(data);
+                } catch (error) {
+                    console.error('Failed to load demo:', error);
+                }
+            };
+
+            const handleSearch = async (query) => {
+                try {
+                    const response = await fetch(`${config.backendUrl}/api/v1/search-similar`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ query, top_k: 10 })
+                    });
+                    const data = await response.json();
+                    setSearchResults(data.results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                    setSearchResults([]);
+                }
+            };
+
+            const getHeaderInfo = () => {
+                switch (activeView) {
+                    case 'analyze':
+                        return { title: 'Analyze Incident', subtitle: 'Investigate production incidents with AI-powered analysis' };
+                    case 'upload':
+                        return { title: 'Upload Logs', subtitle: 'Upload log files for batch analysis' };
+                    case 'memory':
+                        return { title: 'Incident Memory', subtitle: 'Search and learn from past incidents' };
+                    default:
+                        return { title: 'Log Analyzer', subtitle: '' };
+                }
+            };
+
+            const { title, subtitle } = getHeaderInfo();
+
+            return (
+                <div className="app-container">
+                    <Sidebar activeView={activeView} setActiveView={setActiveView} />
+                    
+                    <div className="main-content">
+                        <Header 
+                            title={title} 
+                            subtitle={subtitle} 
+                            apiStatus={apiStatus}
+                            onConfigClick={() => setShowConfig(true)}
+                        />
+                        
+                        <div className="content-area">
+                            {activeView === 'analyze' && (
+                                <>
+                                    <LogAnalysisForm 
+                                        onSubmit={handleAnalyze}
+                                        isLoading={isLoading}
+                                        onLoadDemo={handleLoadDemo}
+                                    />
+                                    <AnalysisResults result={analysisResult} />
+                                </>
+                            )}
+
+                            {activeView === 'upload' && (
+                                <>
+                                    <UploadView onAnalyze={handleAnalyze} isLoading={isLoading} />
+                                    <AnalysisResults result={analysisResult} />
+                                </>
+                            )}
+
+                            {activeView === 'memory' && (
+                                <MemoryView onSearch={handleSearch} searchResults={searchResults} />
+                            )}
+                        </div>
+                    </div>
+
+                    {isLoading && <LoadingOverlay currentAgent={currentAgent} />}
+                    
+                    <ConfigModal 
+                        isOpen={showConfig}
+                        onClose={() => setShowConfig(false)}
+                        config={config}
+                        onSave={setConfig}
+                    />
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
