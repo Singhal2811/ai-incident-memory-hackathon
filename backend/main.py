@@ -155,20 +155,37 @@ class LLMClient:
         return response.json()["content"][0]["text"]
     
     async def get_embedding(self, text: str) -> List[float]:
-        """Get text embedding using OpenAI's embedding model"""
-        response = await self.http_client.post(
-            "https://api.openai.com/v1/embeddings",
-            headers={
-                "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "text-embedding-3-small",
-                "input": text
-            }
-        )
-        response.raise_for_status()
-        return response.json()["data"][0]["embedding"]
+        """Get text embedding - uses OpenAI if available, otherwise hash-based fallback"""
+        if Config.OPENAI_API_KEY:
+            response = await self.http_client.post(
+                "https://api.openai.com/v1/embeddings",
+                headers={
+                    "Authorization": f"Bearer {Config.OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "text-embedding-3-small",
+                    "input": text
+                }
+            )
+            response.raise_for_status()
+            return response.json()["data"][0]["embedding"]
+        else:
+            # Hash-based embedding fallback when no OpenAI key is available
+            import struct
+            embedding_dim = 384
+            embedding = []
+            for i in range(embedding_dim):
+                h = hashlib.md5(f"{text}_{i}".encode()).digest()
+                val = struct.unpack('f', bytes(h[0:4]))[0]
+                # Normalize to [-1, 1]
+                val = (val % 2) - 1
+                embedding.append(val)
+            # L2 normalize
+            norm = sum(v*v for v in embedding) ** 0.5
+            if norm > 0:
+                embedding = [v / norm for v in embedding]
+            return embedding
 
 # =============================================================================
 # VictoriaLogs Client
@@ -225,11 +242,10 @@ class IncidentMemory:
     """Vector database for storing and retrieving incident knowledge"""
     
     def __init__(self):
-        self.client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=Config.CHROMA_PERSIST_DIR,
-            anonymized_telemetry=False
-        ))
+        self.client = chromadb.PersistentClient(
+            path=Config.CHROMA_PERSIST_DIR,
+            settings=Settings(anonymized_telemetry=False)
+        )
         self.collection = self.client.get_or_create_collection(
             name=Config.CHROMA_COLLECTION_NAME,
             metadata={"hnsw:space": "cosine"}
