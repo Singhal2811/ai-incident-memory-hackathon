@@ -17,3 +17,11 @@ venv/
 node_modules/
 dist/
 build/
+
+# IDE files
+.idea/
+
+# Local / generated runtime data
+backend/data/
+*.sqlite3
+
