@@ -66,9 +66,3 @@ The frontend (`frontend/index.html`) is designed to look like a fully fledged Re
 
 ---
 
-### 4. Hackathon Demo Recommendations
-
-To wow the judges and perfectly execute this product presentation, hit these focal points:
-- **Demonstrate Context Condensation**: Show a massive log file (1MB+) and explain how the `LogPreProcessor` crushes this into manageable, structured prompts.
-- **Explain the Agent Handoff**: Open the `Agents` tab in the frontend results to show how the **Timeline Agent** uses the output from the **Log Analysis Agent**. Emphasize "Multi-Agent Orchestration".
-- **Trigger the 'Memory' Effect**: Run the analysis form twice on similar but distinct errors. Demonstrate the "Similar Incidents" tab accurately diagnosing the second incident based on the generated PIR from the first incident via the Vector ChromaDB memory.
